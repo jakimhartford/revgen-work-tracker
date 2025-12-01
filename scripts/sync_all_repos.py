@@ -20,17 +20,29 @@ import requests
 # Format: "owner/repo"
 REPOS = [
     "jakimhartford/revgen-work-tracker",
-    # Add more repos below:
-    # "jakimhartford/another-repo",
-    # "jakimhartford/client-project",
+    "jakimhartford/sports-betting",
+    "Akels-Carpet-One/rfms-api-manager",
+    "DeliveryKick/DK-ElasticSearch",
+    "DeliveryKick/DKWeb",
+    "DeliveryKick/Ordering-Delivery-and-Payment-Backend",
+    "DeliveryKick/Restaurant-Repository-Backend",
+    "DeliveryKick/UberScraper",
+    "DeliveryKick/deliverykick-infrastructure",
+    "VPC-PII/vpc",
 ]
 
-# Map repos to Source values in Notion (optional)
-# If not specified, uses repo name
+# Map repos to Source values in Notion
 REPO_SOURCE_MAP = {
     "revgen-work-tracker": "RevGen",
-    # "another-repo": "DeliveryKick",
-    # "client-project": "VPC",
+    "sports-betting": "Sports",
+    "rfms-api-manager": "RFMS",
+    "DK-ElasticSearch": "DeliveryKick",
+    "DKWeb": "DeliveryKick",
+    "Ordering-Delivery-and-Payment-Backend": "DeliveryKick",
+    "Restaurant-Repository-Backend": "DeliveryKick",
+    "UberScraper": "DeliveryKick",
+    "deliverykick-infrastructure": "DeliveryKick",
+    "vpc": "VPC",
 }
 # =============================================================================
 
