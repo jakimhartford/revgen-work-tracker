@@ -14,6 +14,16 @@ import requests
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_API_BASE = "https://api.github.com"
 
+# =============================================================================
+# YOUR ORGANIZATIONS - add/remove as needed
+# =============================================================================
+ORGS = [
+    "Akels-Carpet-One",
+    "DeliveryKick",
+    "VPC-PII",
+]
+# =============================================================================
+
 
 def get_github_headers():
     return {
@@ -21,16 +31,6 @@ def get_github_headers():
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
-
-
-def get_user_orgs():
-    """Get all organizations the user belongs to."""
-    url = f"{GITHUB_API_BASE}/user/orgs"
-    resp = requests.get(url, headers=get_github_headers())
-    if resp.status_code == 200:
-        return resp.json()
-    print(f"Error fetching orgs: {resp.status_code}")
-    return []
 
 
 def get_org_repos(org_name: str):
@@ -93,14 +93,12 @@ def main():
     print("🔍 GitHub Repository Discovery")
     print("=" * 60)
 
-    # Get orgs
-    orgs = get_user_orgs()
-    print(f"\n📁 Organizations you belong to: {len(orgs)}")
-
     all_repos = []
 
-    for org in orgs:
-        org_name = org["login"]
+    # Get repos from configured orgs
+    print(f"\n📁 Scanning {len(ORGS)} organizations...")
+
+    for org_name in ORGS:
         repos = get_org_repos(org_name)
         print(f"\n🏢 {org_name} ({len(repos)} repos)")
         print("-" * 40)
