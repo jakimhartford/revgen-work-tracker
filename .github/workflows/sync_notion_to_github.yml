@@ -1,14 +1,13 @@
-name: Sync GitHub Issues to Notion
+name: Sync Notion to GitHub (Bidirectional)
 
 on:
   workflow_dispatch:
-  issues:
-    types: [opened, edited, closed, reopened, labeled, unlabeled, milestoned, demilestoned]
-  issue_comment:
-    types: [created, edited]
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
 
 jobs:
-  sync-to-notion:
+  sync-notion-to-github:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,12 +24,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Run sync script
+      - name: Run bidirectional sync
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_EVENT_PATH: ${{ github.event_path }}
           GITHUB_REPO_NAME: ${{ github.repository }}
         run: |
-          python scripts/sync_issue_to_notion.py
+          python scripts/sync_issue_to_notion.py --bidirectional
