@@ -182,6 +182,18 @@ def get_notion_page_content(page_id: str) -> list:
     return []
 
 
+def get_priority_from_labels(labels: list) -> str:
+    """Extract priority from GitHub labels."""
+    label_names = [l["name"].lower() for l in labels]
+    if "high-priority" in label_names or "high" in label_names or "urgent" in label_names:
+        return "High"
+    if "medium" in label_names or "medium-priority" in label_names:
+        return "Medium"
+    if "low" in label_names or "low-priority" in label_names:
+        return "Low"
+    return "Medium"  # Default
+
+
 def build_properties(issue: dict, repo_name: str, comments_count: int = 0, optional_props: bool = False) -> dict:
     """Build Notion properties payload from GitHub issue."""
     issue_title = issue["title"]
@@ -190,8 +202,10 @@ def build_properties(issue: dict, repo_name: str, comments_count: int = 0, optio
     issue_state = issue["state"]
     labels = issue.get("labels", [])
     milestone = issue.get("milestone")
+    assignees = issue.get("assignees", [])
 
     status_value = map_status_to_notion(issue_state, labels)
+    priority_value = get_priority_from_labels(labels)
 
     # Core properties (always included)
     properties = {
@@ -201,6 +215,7 @@ def build_properties(issue: dict, repo_name: str, comments_count: int = 0, optio
         "URL": {"url": issue_url},
         "Status": {"select": {"name": status_value}},
         "Source": {"select": {"name": "RevGen"}},
+        "Priority": {"select": {"name": priority_value}},
     }
 
     # Optional properties (only if database has them configured)
@@ -215,6 +230,16 @@ def build_properties(issue: dict, repo_name: str, comments_count: int = 0, optio
         # Add milestone if present
         if milestone:
             properties["Milestone"] = {"select": {"name": milestone["title"]}}
+            # Add due date from milestone if available
+            if milestone.get("due_on"):
+                # due_on format: "2024-01-15T00:00:00Z"
+                due_date = milestone["due_on"][:10]  # Extract YYYY-MM-DD
+                properties["Due Date"] = {"date": {"start": due_date}}
+
+        # Add assignee if present
+        if assignees:
+            assignee_names = [a["login"] for a in assignees]
+            properties["Assignee"] = {"rich_text": [{"text": {"content": ", ".join(assignee_names)}}]}
 
         # Add comments count
         properties["Comments"] = {"number": comments_count}
