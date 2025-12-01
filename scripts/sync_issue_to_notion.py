@@ -182,7 +182,7 @@ def get_notion_page_content(page_id: str) -> list:
     return []
 
 
-def build_properties(issue: dict, repo_name: str, comments_count: int = 0) -> dict:
+def build_properties(issue: dict, repo_name: str, comments_count: int = 0, optional_props: bool = False) -> dict:
     """Build Notion properties payload from GitHub issue."""
     issue_title = issue["title"]
     issue_number = issue["number"]
@@ -193,9 +193,7 @@ def build_properties(issue: dict, repo_name: str, comments_count: int = 0) -> di
 
     status_value = map_status_to_notion(issue_state, labels)
 
-    # Build labels multi-select
-    label_options = [{"name": label["name"]} for label in labels]
-
+    # Core properties (always included)
     properties = {
         "Name": {"title": [{"text": {"content": issue_title}}]},
         "Issue ID": {"rich_text": [{"text": {"content": str(issue_number)}}]},
@@ -205,18 +203,21 @@ def build_properties(issue: dict, repo_name: str, comments_count: int = 0) -> di
         "Source": {"select": {"name": "RevGen"}},
     }
 
-    # Add labels if present
-    if label_options:
-        properties["Labels"] = {"multi_select": label_options}
-    else:
-        properties["Labels"] = {"multi_select": []}
+    # Optional properties (only if database has them configured)
+    if optional_props:
+        # Build labels multi-select
+        label_options = [{"name": label["name"]} for label in labels]
+        if label_options:
+            properties["Labels"] = {"multi_select": label_options}
+        else:
+            properties["Labels"] = {"multi_select": []}
 
-    # Add milestone if present
-    if milestone:
-        properties["Milestone"] = {"select": {"name": milestone["title"]}}
+        # Add milestone if present
+        if milestone:
+            properties["Milestone"] = {"select": {"name": milestone["title"]}}
 
-    # Add comments count
-    properties["Comments"] = {"number": comments_count}
+        # Add comments count
+        properties["Comments"] = {"number": comments_count}
 
     return properties
 
@@ -262,16 +263,21 @@ def create_notion_page(issue: dict, repo_name: str, comments: list = None):
     """Create a new Notion page for a GitHub issue."""
     url = f"{NOTION_BASE_URL}/pages"
     comments = comments or []
-    properties = build_properties(issue, repo_name, len(comments))
+    properties = build_properties(issue, repo_name, len(comments), optional_props=True)
 
-    # Build page content with issue body
-    children = []
+    payload = {
+        "parent": {"database_id": NOTION_DATABASE_ID},
+        "properties": properties,
+    }
 
-    # Add issue body as content
+    # Optionally add issue body as page content
     issue_body = issue.get("body") or ""
     if issue_body:
+        children = []
         # Split body into chunks (Notion has 2000 char limit per block)
-        chunks = [issue_body[i:i+2000] for i in range(0, len(issue_body), 2000)]
+        # Also limit total length to avoid issues
+        truncated_body = issue_body[:4000]
+        chunks = [truncated_body[i:i+2000] for i in range(0, len(truncated_body), 2000)]
         for chunk in chunks:
             children.append({
                 "object": "block",
@@ -280,15 +286,7 @@ def create_notion_page(issue: dict, repo_name: str, comments: list = None):
                     "rich_text": [{"type": "text", "text": {"content": chunk}}]
                 }
             })
-
-    # Add comments
-    children.extend(build_comment_blocks(comments))
-
-    payload = {
-        "parent": {"database_id": NOTION_DATABASE_ID},
-        "properties": properties,
-        "children": children,
-    }
+        payload["children"] = children
 
     resp = requests.post(url, headers=NOTION_HEADERS, json=payload)
     resp.raise_for_status()
@@ -300,7 +298,7 @@ def update_notion_page(page_id: str, issue: dict, repo_name: str, comments: list
     """Update an existing Notion page."""
     url = f"{NOTION_BASE_URL}/pages/{page_id}"
     comments = comments or []
-    properties = build_properties(issue, repo_name, len(comments))
+    properties = build_properties(issue, repo_name, len(comments), optional_props=True)
 
     payload = {"properties": properties}
     resp = requests.patch(url, headers=NOTION_HEADERS, json=payload)
